@@ -127,7 +127,7 @@ FROM alpine:3.13
 LABEL MAINTAINER Alfred Gutierrez <alf.g.jr@gmail.com>
 
 # Set default ports.
-ENV HTTP_PORT 80
+ENV HTTP_PORT 8080
 ENV HTTPS_PORT 443
 ENV RTMP_PORT 1935
 
@@ -161,7 +161,7 @@ RUN mkdir -p /opt/data && mkdir /www
 ADD static /www/static
 
 EXPOSE 1935
-EXPOSE 80
+EXPOSE 8080
 
 CMD envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" < \
   /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && \
