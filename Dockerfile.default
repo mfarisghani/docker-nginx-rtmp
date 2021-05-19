@@ -118,6 +118,7 @@ RUN cd /tmp/ffmpeg-${FFMPEG_VERSION} && \
   --extra-libs="-lpthread -lm" && \
   make && make install && make distclean
 
+
 # Cleanup.
 RUN rm -rf /var/cache/* /tmp/*
 
@@ -147,13 +148,7 @@ RUN apk add --update \
   opus \
   rtmpdump \
   x264-dev \
-  x265-dev \
-  python3 \
-  python3-dev \
-  gcc \
-  musl-dev \
-  which \
-  bash
+  x265-dev
 
 COPY --from=build-nginx /usr/local/nginx /usr/local/nginx
 COPY --from=build-nginx /etc/nginx /etc/nginx
@@ -163,43 +158,12 @@ COPY --from=build-ffmpeg /usr/lib/libfdk-aac.so.2 /usr/lib/libfdk-aac.so.2
 # Add NGINX path, config and static files.
 ENV PATH "${PATH}:/usr/local/nginx/sbin"
 ADD nginx.conf /etc/nginx/nginx.conf.template
-RUN mkdir -p /opt/data/hls && mkdir /www
+RUN mkdir -p /opt/data && mkdir /www
 ADD static /www/static
-ENV GOOGLE_APPLICATION_CREDENTIALS /gcloud-key.json
-ADD certs/gcloud-key.json /gcloud-key.json
-ENV RSYNC_HLS_PATH /opt/data/hls
-ENV RSYNC_BUCKET_NAME mfg-live
-ADD scripts/rsync-m3u8.sh /rsync-m3u8.sh
-ADD scripts/rsync-ts.sh /rsync-ts.sh
-
-# Down
-RUN curl -L -o crcmod.tar.gz "https://downloads.sourceforge.net/project/crcmod/crcmod/crcmod-1.7/crcmod-1.7.tar.gz"
-
-RUN tar -xzf crcmod.tar.gz && cd crcmod-1.7/ && python3 setup.py install && cd ..
-
-# Downloading gcloud package
-RUN curl https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz > /tmp/google-cloud-sdk.tar.gz
-
-# Installing the package
-RUN mkdir -p /usr/local/gcloud \
-  && tar -C /usr/local/gcloud -xvf /tmp/google-cloud-sdk.tar.gz \
-  && /usr/local/gcloud/google-cloud-sdk/install.sh
-
-# Adding the package path to local
-ENV PATH $PATH:/usr/local/gcloud/google-cloud-sdk/bin
-
-RUN gcloud auth activate-service-account --key-file /gcloud-key.json
-# RUN gsutil rsync -r /opt/data/hls gs://mfg-live/
-# RUN /rsync-m3u8.sh &> /var/log/rsync-m3u8.log &
-# RUN /rsync-ts.sh &> /var/log/rsync-ts.log &
-
-# USER root
 
 EXPOSE 1935
 EXPOSE 8080
 
-CMD /rsync-m3u8.sh &> /var/log/rsync-m3u8.log & \
-  /rsync-ts.sh &> /var/log/rsync-ts.log & \
-  envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" < \
+CMD envsubst "$(env | sed -e 's/=.*//' -e 's/^/\$/g')" < \
   /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && \
   nginx
